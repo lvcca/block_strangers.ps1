@@ -4,7 +4,8 @@ Dynamic firewall to block strange IPs
 Creates SUS_HOSTS.txt file to desktop.
 Creates two firewall rules in both INCOMING and OUTGOING traffic.
 
-Block IPs based on FQDN, if not recognized IPs will be added to block list.
+Block IPs based on FQDN recognized by trusted DNS server
+If IP not recognized it will be added to SUS_HOSTS.txt
 
 Requires Admin Credentials
 
