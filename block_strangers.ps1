@@ -27,35 +27,35 @@ function clear_firewall
 
 function do-block {
     $sus_hosts = $null
-    $list = $null
-    $a = $null
+    $all_active_connections = $null
+    $all_tcp_connections = $null
 
     $sus_hosts = New-Object Collections.Generic.List[String]
-    $list = New-Object Collections.Generic.List[String]
-    $a = Get-NetTCPConnection
-    $dns_servers = @('8.8.4.4') #Specify Trusted DNS Servers
+    $all_active_connections = New-Object Collections.Generic.List[String]
+    $all_tcp_connections = Get-NetTCPConnection
+    $dns_servers = @('8.8.8.8')
     $found_hosts = New-Object Collections.Generic.List[PSCustomObject]
 
-    foreach ($asd in $(Get-Content "$env:USERPROFILE\Desktop\Sus_Hosts.txt" | Get-Unique))
+    foreach ($curr_entry in $(Get-Content "$env:USERPROFILE\Desktop\Sus_Hosts.txt" | Get-Unique))
     {
-        $sus_hosts.add($asd)
+        $sus_hosts.add($curr_entry)
     }
 
-    foreach ($b in $a)
+    foreach ($connection in $all_tcp_connections)
     {
-        if ($b.RemoteAddress -notlike '127.0.0.1' -and $b.RemoteAddress -notlike '0.0.0.0' -and $b.RemoteAddress -notlike '*::*')
+        if ($connection.RemoteAddress -notlike '127.0.0.1' -and $connection.RemoteAddress -notlike '0.0.0.0' -and $connection.RemoteAddress -notlike '*::*')
         {
-            if (!$sus_hosts.Contains($b.RemoteAddress))
+            if (!$sus_hosts.Contains($connection.RemoteAddress))
             {
-                if (!$list.contains([String]$b.RemoteAddress))
+                if (!$all_active_connections.contains([String]$connection.RemoteAddress))
                 {
-                    $list.add($b.RemoteAddress)
+                    $all_active_connections.add($connection.RemoteAddress)
                 }
             }
         }
     }
 
-    foreach($l in $list)
+    foreach($active_connection in $all_active_connections)
     {
 
         $job_list = New-Object Collections.Generic.List[String]
@@ -68,15 +68,15 @@ function do-block {
             Try
             {
                 $found_host = ""
-                $found_host = Resolve-DnsName $l -erroraction Stop -QuickTimeout -Server $server
+                $found_host = Resolve-DnsName $active_connection -erroraction Stop -QuickTimeout -Server $server
                 $found_flag = $true
 
                 if($found_flag -eq $true)
                 {
-                    #Write-Host 'Found ' $l ':' $found_host.NameHost ' with ' $server
+                    #Write-Host 'Found ' $active_connection ':' $found_host.NameHost ' with ' $server
                     
                     $found = [PSCustomObject]@{
-                        Remote_IP = $l
+                        Remote_IP = $active_connection 
                         Remote_Name = $found_host.NameHost
                         Found_DNS_Server = $server
                     }
@@ -88,16 +88,17 @@ function do-block {
         
             Catch 
             {
-                Write-Host 'Could not find ' $l ' with ' $server
+                Write-Host 'Could not find ' $active_connection ' with ' $server
             }                              
         }
         if($found_flag -eq $false)
         {
-            Write-Host 'Added [' $l '] to suspicious hosts.'
-            $sus_hosts.Add($l)
+            Write-Host 'Added [' $active_connection '] to suspicious hosts.'
+            $sus_hosts.Add( $active_connection )
         }
-    }    
-    cls
+    }
+    
+    Clear-Host
     Write-Host 'Found Hosts'
     $found_hosts | format-table -AutoSize
     Write-Host '***************************'
